@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # mcp-wiki 인스턴스 1 (172.23.192.140)
+  wiki-mcp-140:
+    build:
+      context: .
+      dockerfile: Dockerfile copy
+    container_name: wiki-mcp-140
+    network_mode: host
+    environment:
+      MCP_TRANSPORT: sse
+      MCP_HOST: 172.23.192.140
+      MCP_PORT: 80
+      CONFLUENCE_PROTOCOL: http
+      CONFLUENCE_HOST: 172.23.192.78
+      CONFLUENCE_PORT: 8090
+      CONFLUENCE_PERSONAL_TOKEN: "YOUR_TOKEN_HERE"
+      CONFLUENCE_SSL_VERIFY: "true"
+    restart: unless-stopped
+
+  # mcp-wiki 인스턴스 2 (172.23.192.141)
+  wiki-mcp-141:
+    build:
+      context: .
+      dockerfile: Dockerfile.141
+    container_name: wiki-mcp-141
+    network_mode: host
+    environment:
+      MCP_TRANSPORT: sse
+      MCP_HOST: 172.23.192.141
+      MCP_PORT: 80
+      CONFLUENCE_PROTOCOL: http
+      CONFLUENCE_HOST: 172.23.192.78
+      CONFLUENCE_PORT: 8090
+      CONFLUENCE_PERSONAL_TOKEN: "YOUR_TOKEN_HERE"
+      CONFLUENCE_SSL_VERIFY: "true"
+    restart: unless-stopped
+
+  # mcp-wiki 인스턴스 3 (172.23.192.142)
+  wiki-mcp-142:
+    build:
+      context: .
+      dockerfile: Dockerfile.142
+    container_name: wiki-mcp-142
+    network_mode: host
+    environment:
+      MCP_TRANSPORT: sse
+      MCP_HOST: 172.23.192.142
+      MCP_PORT: 80
+      CONFLUENCE_PROTOCOL: http
+      CONFLUENCE_HOST: 172.23.192.78
+      CONFLUENCE_PORT: 8090
+      CONFLUENCE_PERSONAL_TOKEN: "YOUR_TOKEN_HERE"
+      CONFLUENCE_SSL_VERIFY: "true"
+    restart: unless-stopped

@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(py:*)",
+      "Bash(npm install:*)",
+      "Bash(.venv/Scripts/pip install:*)",
+      "Bash(\"c:/Users/leeyo/programming/wiki_mcp/mcp-wiki-ver2/@wiki_mcp_fastmcp/.venv/Scripts/python.exe\" -m pip install python-dotenv --quiet)",
+      "Bash(openspec --help:*)",
+      "Bash(openspec init --help:*)",
+      "Bash(uv add:*)",
+      "Bash(openspec config --help:*)",
+      "Bash(openspec config list:*)",
+      "Bash(pip install:*)",
+      "Bash(pip3 install:*)",
+      "Bash(python -m pip install:*)",
+      "Bash(git clone:*)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm run build:*)",
+      "Bash(npm link)",
+      "Bash(openspec:*)",
+      "Bash(npx openspec:*)",
+      "Bash(wc:*)",
+      "Bash(pip show:*)",
+      "Bash(c:/Users/leeyo/programming/wiki_mcp/mcp-wiki-ver2/.venv/Scripts/python.exe -m ensurepip:*)",
+      "Bash(c:/Users/leeyo/programming/wiki_mcp/mcp-wiki-ver2/.venv/Scripts/python.exe -m pip install:*)"
+    ]
+  }
+}

@@ -1,0 +1,16 @@
+﻿FROM python:3.12-slim
+WORKDIR /app
+COPY pyproject.toml /app/pyproject.toml
+COPY src /app/src
+RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir .
+ENV PYTHONUNBUFFERED=1
+ENV MCP_TRANSPORT=streamable
+ENV MCP_HOST=0.0.0.0
+ENV MCP_PORT=8002
+ENV CONFLUENCE_PROTOCOL=http
+ENV CONFLUENCE_HOST=localhost
+ENV CONFLUENCE_PORT=8090
+ENV CONFLUENCE_PERSONAL_TOKEN=dummy
+ENV CONFLUENCE_SSL_VERIFY=true
+EXPOSE 8002
+ENTRYPOINT ["wiki-mcp"]

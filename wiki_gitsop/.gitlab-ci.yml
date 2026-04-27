@@ -1,0 +1,72 @@
+﻿default:
+  tags:
+    - sop
+
+# [git_sop 대비 변경] Wiki MCP 기준으로 조정한 항목:
+# - 기본 서비스 포트 8002 사용
+# - deploy 단계에서 ConfigMap/Secret 생성
+# - Route 호스트 suffix 변수 사용
+variables:
+  NAMESPACE: "mcp-team"
+  PROJECT_NAME: "wiki-mcp"
+  NEXUS_URL_HOST: "nexus.ascdevapp.shinhan.com"
+  NEXUS_URL: "http://nexus.ascdevapp.shinhan.com/repository/pypi/simple"
+  NEXUS_IP: "172.23.192.150"
+  BASE_IMAGE_REPO: "172.23.192.140:5000"
+  IMAGE_REPO: "default-route-openshift-image-registry.apps.ocpdev.shinhan.com"
+  DEPLOY_CLUSTER: "ocp"
+  # [git_sop 대비 변경] 템플릿 기본은 8000이지만 wiki-mcp는 8002를 사용.
+  SERVICE_PORT: "8002"
+  # [git_sop 대비 변경] Route host를 {{PN}}.{{ROUTE_HOST_SUFFIX}} 형태로 생성.
+  ROUTE_HOST_SUFFIX: "ocpdev.shinhan.com"
+  # [git_sop 대비 변경] 대문자 Dockerfile 경로를 명시적으로 사용.
+  GITSOP_DOCKERFILE_PATH: ".gitsop/Dockerfile"
+  GITSOP_DEPLOYMENT_YAML_PATH: ".gitsop/deployment.yaml"
+
+stages:
+  - build
+  - image-push
+  - deploy
+
+before_script:
+  - export NAMESPACE="$(echo "$CI_PROJECT_NAMESPACE" | tr '/' '-')"
+  - export PROJECT_NAME="$(echo "$CI_PROJECT_NAME" | tr '_' '-')"
+
+packaging-and-build:
+  stage: build
+  script:
+    - export TMPTIME="$(date +%Y%m%d)"
+    - export IMAGE_TAG="$IMAGE_REPO/$NAMESPACE/$PROJECT_NAME:$TMPTIME"
+    - export DOCKER_BUILDKIT=0
+    # [git_sop 대비 변경] wiki_gitsop/.gitsop/Dockerfile 기준으로 빌드.
+    - docker build --no-cache --build-arg NEXUS_URL_HOST="$NEXUS_URL_HOST" --build-arg NEXUS_URL="$NEXUS_URL" --build-arg SHBMCP_SERVER_NAME="$PROJECT_NAME" --add-host "$NEXUS_URL_HOST:$NEXUS_IP" -t "$IMAGE_TAG" -f "$GITSOP_DOCKERFILE_PATH" .
+    - echo "Built image: $IMAGE_TAG"
+  only:
+    - dev
+
+image-push-job:
+  stage: image-push
+  script:
+    - export TMPTIME="$(date +%Y%m%d)"
+    - export IMAGE_TAG="$IMAGE_REPO/$NAMESPACE/$PROJECT_NAME:$TMPTIME"
+    - docker push "$IMAGE_TAG"
+    - echo "Pushed image: $IMAGE_TAG"
+  only:
+    - dev
+
+deploy-job:
+  stage: deploy
+  script:
+    - export TMPTIME="$(date +%Y%m%d)"
+    - export IMAGE_TAG="$IMAGE_REPO/$NAMESPACE/$PROJECT_NAME:$TMPTIME"
+    - kubectl config use-context "$DEPLOY_CLUSTER"
+    # [git_sop 대비 변경] MCP/Confluence 비밀 제외 설정을 ConfigMap으로 생성/갱신.
+    - kubectl -n "$NAMESPACE" create configmap "$PROJECT_NAME-env" --from-literal=MCP_TRANSPORT="${MCP_TRANSPORT:-streamable}" --from-literal=MCP_HOST="${MCP_HOST:-0.0.0.0}" --from-literal=MCP_PORT="${MCP_PORT:-8002}" --from-literal=CONFLUENCE_URL="${CONFLUENCE_URL}" --from-literal=CONFLUENCE_HOST="${CONFLUENCE_HOST}" --from-literal=CONFLUENCE_PORT="${CONFLUENCE_PORT:-8090}" --from-literal=CONFLUENCE_PROTOCOL="${CONFLUENCE_PROTOCOL:-http}" --from-literal=CONFLUENCE_USERNAME="${CONFLUENCE_USERNAME}" --from-literal=CONFLUENCE_SSL_VERIFY="${CONFLUENCE_SSL_VERIFY:-true}" --dry-run=client -o yaml | kubectl apply -f -
+    # [git_sop 대비 변경] Confluence 토큰을 Secret으로 생성/갱신.
+    - kubectl -n "$NAMESPACE" create secret generic "$PROJECT_NAME-secret" --from-literal=CONFLUENCE_PERSONAL_TOKEN="${CONFLUENCE_PERSONAL_TOKEN}" --from-literal=CONFLUENCE_API_TOKEN="${CONFLUENCE_API_TOKEN}" --dry-run=client -o yaml | kubectl apply -f -
+    # [git_sop 대비 변경] 원본 템플릿을 직접 수정하지 않고 렌더 파일에 치환.
+    - cp "$GITSOP_DEPLOYMENT_YAML_PATH" ".gitsop/deployment.rendered.yaml"
+    - sed -i -e "s#{{PN}}#$PROJECT_NAME#g" -e "s#{{REPO}}#$IMAGE_REPO#g" -e "s#{{NS}}#$NAMESPACE#g" -e "s#{{TMPTIME}}#$TMPTIME#g" -e "s#{{PORT}}#$SERVICE_PORT#g" -e "s#{{ROUTE_HOST_SUFFIX}}#$ROUTE_HOST_SUFFIX#g" ".gitsop/deployment.rendered.yaml"
+    - kubectl apply -f ".gitsop/deployment.rendered.yaml"
+  only:
+    - dev

@@ -86,11 +86,13 @@ docker build -t wiki-mcp:latest .
 docker run -d \
   --name wiki-mcp-server \
   -p 8002:8002 \
+  -e CONFLUENCE_HOST="host.docker.internal" \
+  -e CONFLUENCE_PORT="8090" \
   -e CONFLUENCE_PERSONAL_TOKEN="your-token-here" \
   wiki-mcp:latest
 ```
 
-💡 **간단!** HOST와 PORT는 기본값(`localhost:8090`)이 사용됩니다.
+💡 **Docker Desktop**에서는 `host.docker.internal`로 호스트에 접근합니다.
 
 #### **IP와 포트 분리 입력 (권장)** 🌟
 
@@ -291,7 +293,7 @@ Cursor 설정 파일 (`C:\Users\<username>\.cursor\mcp.json`)에 추가:
 {
   "mcpServers": {
     "wiki-mcp": {
-      "url": "http://localhost:8002/mcp/v1"
+      "url": "http://localhost:8002/mcp/"
     }
   }
 }
@@ -303,16 +305,16 @@ Cursor 설정 파일 (`C:\Users\<username>\.cursor\mcp.json`)에 추가:
 {
   "mcpServers": {
     "wiki-mcp": {
-      "url": "http://192.168.1.200:8002/mcp/v1"
+      "url": "http://192.168.1.200:8002/mcp/"
     }
   }
 }
 ```
 
 💡 **엔드포인트 정보:**
-- MCP 엔드포인트: `/mcp/v1`
+- MCP 엔드포인트: `/mcp/`
 - 헬스체크: `/health`
-- 서버 정보: `/` (루트)
+- 서버 정보: `/info`
 
 💡 `192.168.1.200`은 wiki-mcp 서버의 실제 IP 주소로 변경하세요.
 
@@ -373,7 +375,7 @@ New-NetFirewallRule -DisplayName "wiki-mcp" -Direction Inbound -LocalPort 8002 -
 {
   "mcpServers": {
     "wiki-mcp": {
-      "url": "http://192.168.1.200:8002/mcp/v1"
+      "url": "http://192.168.1.200:8002/mcp/"
     }
   }
 }
@@ -459,8 +461,8 @@ URL 결정 순서:
 
 | 구분 | 기술 | 용도 |
 |------|------|------|
-| **MCP Transport** | MCP SDK + FastAPI | Streamable HTTP 통신 |
-| **웹 프레임워크** | FastAPI | HTTP 서버 |
+| **MCP Transport** | MCP SDK Streamable HTTP | Streamable HTTP 통신 |
+| **웹 프레임워크** | Starlette | HTTP 서버 |
 | **ASGI 서버** | Uvicorn | 비동기 서버 실행 |
 | **Confluence API** | requests | Confluence REST API 호출 (동기) |
 | **비동기 처리** | asyncio.to_thread() | 동기 코드를 비동기 환경에서 실행 |
@@ -469,12 +471,12 @@ URL 결정 순서:
 
 #### ✅ 변경된 부분
 - **MCP Transport**: SSE → **Streamable HTTP** (표준 MCP 프로토콜)
-- **라이브러리**: fastmcp → **mcp + FastAPI**
-- **엔드포인트**: `/sse` → **/mcp/v1**
+- **라이브러리**: fastmcp → **mcp + Starlette**
+- **엔드포인트**: `/sse` → **/mcp/**
 - **통신 방식**: Server-Sent Events → **HTTP Streamable**
 
 #### ✅ 유지된 부분
-- **Confluence API 클라이언트** (`client.py`): 변경 없음
+- **Confluence API 클라이언트** (`api_client.py`): 변경 없음
 - **데이터 모델** (`models.py`): 변경 없음
 - **모든 기능**: 페이지 CRUD, 검색, 스페이스 조회 동일
 - **환경 변수**: Confluence 관련 설정 동일

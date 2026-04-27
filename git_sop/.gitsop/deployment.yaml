@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{PN}}-deployment
+  namespace: {{NS}}
+  labels:
+    app: {{PN}}-pod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{PN}}-pod
+  template:
+    metadata:
+      labels:
+        app: {{PN}}-pod
+    spec:
+      containers:
+      - name: {{PN}}
+        image: {{REPO}}/{{NS}}/{{PN}}:{{TMPTIME}}
+        imagePullPolicy: Always
+        ports:
+          - containerPort: {{PORT}}
+
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{PN}}-svc
+  namespace: {{NS}}
+spec:
+  type: ClusterIP
+  selector:
+    app: {{PN}}-pod
+  ports:
+    - protocol: TCP
+      port: {{PORT}}
+      targetPort: {{PORT}}
+
+---
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: {{PN}}-route
+  namespace: {{NS}}
+spec:
+  host: {{PN}}.ocpdev.shinhan.com
+  path: /
+  to:
+    kind: Service
+    name: {{PN}}-svc
+    weight: 100
+  port:
+    targetPort: {{PORT}}
+  wildcardPolicy: None

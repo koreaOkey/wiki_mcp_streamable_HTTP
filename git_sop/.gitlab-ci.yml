@@ -1,0 +1,72 @@
+default:
+  tags:
+    - sop
+
+variables:
+  NAMESPACE: "mcp-부서명"
+  PROJECT_NAME: "Project Name"
+  NEXUS_URL_HOST: nexus.ascdevapp.shinhan.com
+  NEXUS_URL:
+http://nexus.ascdevapp.shinhan.com/repository/pypi/simple
+
+  NEXUS_IP: 172.23.192.150
+  BASE_IMAGE_REPO: 172.23.192.140:5000
+  IMAGE_REPO: default-route-openshift-image-registry.apps.ocpdev.shinhan.com
+  DEPLOY_CLUSTER: ocp
+  SERVICE_PORT: 8000
+  LANGUAGE_VERSION: 3.12
+  BUILD_VERSION: "24.0"
+  GITSOP_DEPLOYMENT_YAML_PATH: ".gitsop/deployment.yaml"
+
+stages:
+  - build
+  - image-push
+  - deploy
+
+before_script:
+  - export NAMESPACE=$(echo $CI_PROJECT_NAMESPACE | tr '/' '-')
+  - export PROJECT_NAME=$(echo $CI_PROJECT_NAME | tr '_' '-')
+
+packaging-and-build:
+  stage: build
+  script:
+    - echo $ENV_NAME
+    - export TMPTIME=$(date +%Y%m%d)
+    - echo "$TMPTIME"
+    - export DOCKER_BUILDKIT=0
+    - sed -i -e "s#{{BASE_IMAGE_REPO}}#$BASE_IMAGE_REPO#g"
+      .gitsop/Dockerfile
+    - docker build
+      --no-cache
+      --build-arg NEXUS_URL_HOST=$NEXUS_URL_HOST
+      --build-arg NEXUS_URL=$NEXUS_URL
+      --build-arg SHBMCP_SERVER_NAME=$PROJECT_NAME
+      --add-host $NEXUS_URL_HOST:$NEXUS_IP
+      -t $IMAGE_REPO/$NAMESPACE/$PROJECT_NAME:$TMPTIME
+      -f .gitsop/Dockerfile .
+  only:
+    - dev
+
+image-push-job:
+  stage: image-push
+  script:
+    - export TMPTIME=$(date +%Y%m%d)
+    - echo "$TMPTIME"
+    - docker push $IMAGE_REPO/$NAMESPACE/$PROJECT_NAME:$TMPTIME
+    - echo "docker push $IMAGE_REPO/$NAMESPACE/$PROJECT_NAME:$TMPTIME"
+  only:
+    - dev
+
+deploy-job:
+  stage: deploy
+  script:
+    - export TMPTIME=$(date +%Y%m%d)
+    - echo "$TMPTIME"
+    - IFS="/" read -r ROOTGROUP SUBGROUP <<< "$NAMESPACE"
+    - kubectl config use-context $DEPLOY_CLUSTER
+    - sed -i -e "s#{{PN}}#$PROJECT_NAME#g" -e "s#{{REPO}}#$IMAGE_REPO#g" -e "s#{{NS}}#$NAMESPACE#g" -e "s#{{ROOTGROUP}}#$ROOTGROUP#g" -e "s#{{TMPTIME}}#$TMPTIME#g" -e "s#{{PORT}}#$SERVICE_PORT#g" -e "s#{{ENV_TYPE}}#$CI_COMMIT_BRANCH#g" $GITSOP_DEPLOYMENT_YAML_PATH
+    - cat $GITSOP_DEPLOYMENT_YAML_PATH
+    - kubectl delete -f $GITSOP_DEPLOYMENT_YAML_PATH || true
+    - kubectl apply -f $GITSOP_DEPLOYMENT_YAML_PATH
+  only:
+    - dev
